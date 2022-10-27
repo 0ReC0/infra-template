@@ -1,4 +1,4 @@
-name: Node.js CI
+name: Default
 
 on: push
 
@@ -18,13 +18,13 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
-    - run: echo "::debug::Run npm ci"
-    - run: npm ci
-    - run: echo "::debug::Run typescript checking"
-    - run: npm run ts
-    - run: echo "::debug::Run linter checking"
-    - run: npm run lint
-    - run: echo "::debug::Run build project"
-    - run: npm run build --if-present
-    - run: echo "::debug::Run tests for project"
-    - run: npm test
+    - name: Run npm ci
+      run: npm ci
+    - name: Run typescript checking
+      run: npm run ts
+    - name: Run linter checking
+      run: npm run lint
+    - name: Run build project
+      run: npm run build --if-present
+    - name: Run tests for project
+      run: npm test
