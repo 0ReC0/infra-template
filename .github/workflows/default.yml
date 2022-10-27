@@ -1,0 +1,30 @@
+name: Node.js CI
+
+on: push
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [16.16.0]
+    
+    steps:
+    - uses: actions/checkout@v3
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    - run: echo "::debug::Run npm ci"
+    - run: npm ci
+    - run: echo "::debug::Run typescript checking"
+    - run: npm run ts
+    - run: echo "::debug::Run linter checking"
+    - run: npm run lint
+    - run: echo "::debug::Run build project"
+    - run: npm run build --if-present
+    - run: echo "::debug::Run tests for project"
+    - run: npm test
