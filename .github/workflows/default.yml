@@ -1,15 +1,6 @@
 name: Default
 
-on: 
-  push:
-  workflow_call: 
-    inputs:
-      # config-path:
-      #   required: true
-      #   type: string
-    secrets:
-      # token:
-      #   required: true
+on: [ push, workflow_call ]
 
 jobs:
   build:
