@@ -1,0 +1,49 @@
+name: Release
+
+on:
+  release:
+      types: [published]
+  push:
+    tags:
+      - rc-0.0.x
+
+jobs:
+  test-build:
+    uses: ./.github/workflows/default.yml
+  release:
+    - name: Publish to Github Packages Registry
+    uses: elgohr/Publish-Docker-Github-Action@v4
+    pre: echo ::save-state name=RELEASE_VERSION::$(echo ${GITHUB_REF:10})
+    with:
+      name: 0ReC0/infra-template/react_app_nginx
+      registry: docker.pkg.github.com
+      username: ${{ secrets.GH_USERNAME }}
+      password: ${{ secrets.GITHUB_TOKEN }}
+      dockerfile: Dockerfile
+      tags: "latest,${{ env.STATE_RELEASE_VERSION }}"
+  tracker_fill_ticket:
+    - name: Dump GitHub context
+      id: github_context_step
+      run: echo '${{ toJSON(github) }}'
+    - name: Get all Commits in one tag
+      env:
+        START_TAG: 
+      run: echo "TAGS_COMMITS=$(git log $START_TAG --pretty='format:%H %an %B')"
+      if: ${{}}
+    - name: Get all Commits between last two tags
+        env:
+          START_TAG: 
+          END_TAG: 
+      run: echo "TAGS_COMMITS=$(git log $START_TAG...$END_TAG --pretty='format:%H %an %B')"
+      if: ${{}}
+    - name: Fill release ticket
+      run: sh ./.github/workflows/fillTrackerTicket.sh
+      # run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+      evn:
+        TRACKER_HOST: ${{ secrets.TRACKER_HOST }}
+        YANDEX_OAUTH_TOKEN: ${{ secrets.YANDEX_OAUTH_TOKEN }}
+        YANDEX_ID_ORGANIZATION: ${{ secrets.YANDEX_ID_ORGANIZATION }}
+        TRACKER_TASK_ID: "HOMEWORKSHRI-193"
+        RELEASE_USER: "${{ github.event.commits[0].author.name }}"
+        RELEASE_TAG: "$(echo ${GITHUB_REF:10})"
+        TAGS_COMMITS: "$(echo ${TAGS_COMMITS})"
