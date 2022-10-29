@@ -59,7 +59,7 @@ jobs:
           TRACKER_HOST: ${{ secrets.TRACKER_HOST }}
           YANDEX_OAUTH_TOKEN: ${{ secrets.YANDEX_OAUTH_TOKEN }}
           YANDEX_ID_ORGANIZATION: ${{ secrets.YANDEX_ID_ORGANIZATION }}
-          TRACKER_TASK_ID: "HOMEWORKSHRI-193"
+          TRACKER_TASK_ID: ${{ secrets.TRACKER_TASK_ID }}
           RELEASE_USER: ${{ github.event.head_commit.committer.name }}
           RELEASE_TAG: ${{ github.ref_name }}
           TAGS_COMMITS: ${{ env.TAGS_COMMITS }}
