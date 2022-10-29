@@ -1,49 +1,77 @@
 name: Release
 
 on:
-  release:
-      types: [published]
   push:
     tags:
-      - rc-0.0.x
+      - rc-0.0.*
 
 jobs:
   test-build:
     uses: ./.github/workflows/default.yml
-  release:
-    - name: Publish to Github Packages Registry
-    uses: elgohr/Publish-Docker-Github-Action@v4
-    pre: echo ::save-state name=RELEASE_VERSION::$(echo ${GITHUB_REF:10})
-    with:
-      name: 0ReC0/infra-template/react_app_nginx
-      registry: docker.pkg.github.com
-      username: ${{ secrets.GH_USERNAME }}
-      password: ${{ secrets.GITHUB_TOKEN }}
-      dockerfile: Dockerfile
-      tags: "latest,${{ env.STATE_RELEASE_VERSION }}"
-  tracker_fill_ticket:
-    - name: Dump GitHub context
-      id: github_context_step
-      run: echo '${{ toJSON(github) }}'
-    - name: Get all Commits in one tag
-      env:
-        START_TAG: 
-      run: echo "TAGS_COMMITS=$(git log $START_TAG --pretty='format:%H %an %B')"
-      if: ${{}}
-    - name: Get all Commits between last two tags
+  publish-release:
+    name: Publish release
+    runs-on: ubuntu-latest
+    needs: test-build
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Publish to Github Packages Registry
+        uses: elgohr/Publish-Docker-Github-Action@v4
+        with:
+          name: 0ReC0/infra-template/react_app_nginx
+          registry: docker.pkg.github.com
+          username: ${{ secrets.GH_USERNAME }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          dockerfile: Dockerfile
+          tags: "latest, ${{ github.ref_name }}"
+      - name: Save latest tags to vars
+        run: |
+          echo "$(git tag --sort=committerdate)"
+          echo "$(git tag --sort=committerdate | tail -2)"
+          readarray GIT_TAGS <<< $(git tag --sort=committerdate | tail -2)
+          echo "END_TAG=${GIT_TAGS[0]}" >> $GITHUB_ENV
+          echo "START_TAG=${GIT_TAGS[1]}" >> $GITHUB_ENV
+      - name: Get all Commits between last two tags
         env:
-          START_TAG: 
-          END_TAG: 
-      run: echo "TAGS_COMMITS=$(git log $START_TAG...$END_TAG --pretty='format:%H %an %B')"
-      if: ${{}}
-    - name: Fill release ticket
-      run: sh ./.github/workflows/fillTrackerTicket.sh
-      # run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
-      evn:
-        TRACKER_HOST: ${{ secrets.TRACKER_HOST }}
-        YANDEX_OAUTH_TOKEN: ${{ secrets.YANDEX_OAUTH_TOKEN }}
-        YANDEX_ID_ORGANIZATION: ${{ secrets.YANDEX_ID_ORGANIZATION }}
-        TRACKER_TASK_ID: "HOMEWORKSHRI-193"
-        RELEASE_USER: "${{ github.event.commits[0].author.name }}"
-        RELEASE_TAG: "$(echo ${GITHUB_REF:10})"
-        TAGS_COMMITS: "$(echo ${TAGS_COMMITS})"
+          START_TAG: ${{ env.START_TAG }}
+          END_TAG: ${{ env.END_TAG }}
+        run: |
+          echo "$(git log $START_TAG...$END_TAG --pretty='format:%H %an %B %n')"
+          readarray TAGS_COMMITS <<< $(printf '%q\n' "$(git log $START_TAG...$END_TAG --pretty='format:%H %an %B %n')")
+          echo "set TAGS_COMMITS to ${TAGS_COMMITS[@]}"
+          echo "TAGS_COMMITS=${TAGS_COMMITS[@]}" >> $GITHUB_ENV
+        if: ${{ env.END_TAG && env.START_TAG }}
+      - name: Get all Commits in one tag
+        env:
+          START_TAG: ${{ env.END_TAG }}
+        run: |
+          echo "$(git log $START_TAG --pretty='format:%H %an %B %n')"
+          readarray TAGS_COMMITS <<< $(printf '%q\n' "$(git log $START_TAG --pretty='format:%H %an %B %n')")
+          echo "set TAGS_COMMITS to ${TAGS_COMMITS[@]}"
+          echo "TAGS_COMMITS=${TAGS_COMMITS[@]}" >> $GITHUB_ENV
+        if: ${{ !env.TAGS_COMMITS && env.START_TAG }}
+      - name: log Tags commits
+        run: echo $TAGS_COMMITS
+      - name: Fill release ticket
+        run: sh ./.github/workflows/fillTrackerTicket.sh
+        env:
+          TRACKER_HOST: ${{ secrets.TRACKER_HOST }}
+          YANDEX_OAUTH_TOKEN: ${{ secrets.YANDEX_OAUTH_TOKEN }}
+          YANDEX_ID_ORGANIZATION: ${{ secrets.YANDEX_ID_ORGANIZATION }}
+          TRACKER_TASK_ID: "HOMEWORKSHRI-193"
+          RELEASE_USER: ${{ github.event.head_commit.committer.name }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          TAGS_COMMITS: ${{ env.TAGS_COMMITS }}
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          body: ${{ env.TAGS_COMMITS }}
+          draft: true
+          prerelease: false
+

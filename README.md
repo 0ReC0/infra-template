@@ -1,3 +1,4 @@
+[![Default](https://github.com/0ReC0/infra-template/actions/workflows/default.yml/badge.svg?branch=master)](https://github.com/0ReC0/infra-template/actions/workflows/default.yml)
 # Getting Started with Create React App
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
